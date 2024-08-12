@@ -1,49 +1,24 @@
 #include <iostream>
 #include <fstream>
-#include<string>
+#include <string>
+#include <cctype>
 using namespace std;
 
 class User;
 const int MaX_Users = 100;
 const string file = "data.txt";
 
-void readFromFileToArray(User[], int&);
-/*
-    the frist function to be called in int main().
-    this function reads information frome the file and adds it to arraye.
-*/
-
-void Registation(User[], int&);
-/*
-    This function takes the new user's information,
-    adds it to the array, -------> setValue(information)
-    and then saves it to a file.-------> saveToFile()----> in class User;
-*/
-string checkEmail(User[], int&);
-/*
-    This function is used to verify that the email is valid and contains an @ symbol.
-    Then make sure that the email is not already in use. -----> checkEmailUser() ---> in class User
-*/
-string checkPassword();
-/*
-    This function is used to ensure that the password is valid
-    and contains uppercase letters, lowercase letters, and numbers.
-*/
-string checkSQ();
-/*
-    This function is used to choose a security question
-    that is used to recover the account in case you forget the password
-*/
-void login(User[], int&);
-/*
-    This function used that the login data is correct.----> checkLogin() ---> in class User
-*/
-void forgetpassword(User[], int&);
-/*
-    This function is used to retrieve the password via email
-    and your security question.----> checkSQ();
-*/
-
+void readFromFileToArray(User[], int &); // reads information frome the file and adds it to arraye.
+void Registation(User[], int &); // takes the new user's information.  
+string getName(const string& ); // check for name is not empty
+string checkEmail(User[], int &); // verify that the email is valid
+bool isValidEmail(const string& ); // Check for invalid characters
+string checkPassword(); // ensure that the password is valid
+string checkSQ(); // choose a security question
+void login(User[], int &); //that the login data is correct
+void forgetpassword(User[], int &); //retrieve the password via email
+string deletespaces(const string&); // Delete the spaces from string
+void createAccount(User); // send user data to save
 
 class User
 {
@@ -54,6 +29,7 @@ private:
     string password;
     string securityQuestion;
     string questionAnswer;
+
 public:
     void setValue(string fName, string lName, string email, string password, string securityQuestion, string questionAnswer)
     {
@@ -70,7 +46,7 @@ public:
     string getquestionAnswer() { return questionAnswer; }
     string getPassword() { return password; }
 
-    static User loadFromFile(ifstream& file)
+    static User loadFromFile(ifstream &file)
     {
         User user;
         getline(file, user.fName);
@@ -82,14 +58,14 @@ public:
         return user;
     }
 
-    void saveToFile(ofstream& file)
+    void saveToFile(ofstream &file)
     {
         file << fName << "\n"
-            << lName << "\n"
-            << email << "\n"
-            << password << "\n"
-            << securityQuestion << "\n"
-            << questionAnswer << endl;
+             << lName << "\n"
+             << email << "\n"
+             << password << "\n"
+             << securityQuestion << "\n"
+             << questionAnswer<< endl;
     }
 
     bool checkLogin(string Email, string Pass)
@@ -110,8 +86,8 @@ int main()
 
     readFromFileToArray(users, numUser);
 
-    bool c = true;
-    while (c)
+    bool running = true;
+    while (running)
     {
         cout << "1) Login\n2) Registration\n3) forget password\n4)Exit\n";
         cout << "Enter your option ";
@@ -129,7 +105,7 @@ int main()
             forgetpassword(users, numUser);
             break;
         case 4:
-            c = false;
+            running = false;
             break;
         default:
             cout << "--------------- Enter your option 1 to 4 ---------------\n";
@@ -139,8 +115,7 @@ int main()
     return 0;
 }
 
-
-void readFromFileToArray(User users[], int& numUser)
+void readFromFileToArray(User users[], int &numUser)
 {
     ifstream inFile(file);
     if (inFile.is_open())
@@ -152,58 +127,73 @@ void readFromFileToArray(User users[], int& numUser)
         inFile.close();
     }
 }
-void Registation(User users[], int& numUser)
+void Registation(User users[], int &numUser)
 {
     string fName, lName, email, password, securityQuestion, questionAnswer;
-    cout << "-----Please enter information to create an account-----" << endl
-        << "----------    Don't use spaces    ----------\n";
+    cout << "\n-----Please enter information to create an account-----" << endl;
 
-    cout << "Enter your first name : ";
-    cin >> fName;
-    cout << "Enter your last name : ";
-    cin >> lName;
+    cin.ignore();
+    fName = getName("Enter your first name : ");
+    
+    lName = getName("Enter your last name : ");
+    
     email = checkEmail(users, numUser);
     password = checkPassword();
     securityQuestion = checkSQ();
     cout << securityQuestion << endl;
+    cin.ignore();
     cout << "Enter your answer : ";
-    cin >> questionAnswer;
+    getline(cin, questionAnswer);
+    questionAnswer = deletespaces(questionAnswer);
 
     users[numUser++].setValue(fName, lName, email, password, securityQuestion, questionAnswer);
-
-    ofstream outfile(file, ios::app);
-    if (outfile.is_open())
-    {
-        users[numUser - 1].saveToFile(outfile);
-        cout << "------------Account successfully created----------\n";
-        outfile.close();
-    }
-    else
-        cout << "-----Unable to open file for saving user data.------\n";
+    createAccount(users[numUser-1]);
+    
 }
-string checkEmail(User users[], int& numUser)
-{
+string checkEmail(User users[], int &numUser) {
     string email;
-    while (true)
-    {
-    check:
-        cout << "Enter your email : ";
-        cin >> email;
-        int ch_ar = email.find('@');
-        if (ch_ar != string::npos && ch_ar != 0 && ch_ar != email.length() - 1)
-        {
-            for (int i = 0; i < numUser; i++)
-            {
-                if (users[i].checkEmailUser(email))
-                {
-                    cout << "-----This email is not available-----\nPlease enter another email\n";
-                    goto check;
+
+    while (true) {
+        cout << "Enter your email: ";
+        getline(cin, email);
+
+        email = deletespaces(email);
+
+        if (isValidEmail(email)) {
+            bool emailExists = false;
+
+            for (int i = 0; i < numUser; i++) {
+                if (users[i].checkEmailUser(email)) {
+                    cout << "\n-----This email is not available-----\nPlease enter another email\n";
+                    emailExists = true;
+                    break;
                 }
             }
-            return email;
+
+            if (!emailExists) {
+                return email;
+            }
+        } else {
+            cout << "\nInvalid email. Ensure it contains '@', a valid domain, and no invalid characters.\n";
         }
-        cout << "Invalid email. It must contain the '@' symbol\n";
     }
+}
+bool isValidEmail(const string& email) {
+    int atPosition = email.find('@');
+    int dotPosition = email.find('.', atPosition + 1);
+    
+    if (atPosition == string::npos || atPosition == 0 || atPosition == email.length() - 1 || 
+        dotPosition == string::npos || dotPosition == email.length() - 1) {
+        return false;
+    }
+    
+    for (char c : email) {
+        if (!isalnum(c) && c != '@' && c != '.' && c != '_' && c != '-') {
+            return false;
+        }
+    }
+
+    return true;
 }
 string checkPassword()
 {
@@ -215,7 +205,8 @@ string checkPassword()
     while (true)
     {
         cout << "Enter your password : ";
-        cin >> password;
+        getline(cin, password);
+        password = deletespaces(password);
         if (password.length() >= 7)
         {
             for (int i = 0; i < password.length(); i++)
@@ -249,13 +240,13 @@ string checkSQ()
     const int size = 5;
     string securityQuestion;
     string questions[size] =
-    { "What is your mother's maiden name?",
-     "What is the name of your first pet?",
-     "In what city were you born?",
-     "What is your favorite book/movie/TV show?",
-     "What is the name of your childhood best friend?" };
+        {"What is your mother's maiden name?",
+         "What is the name of your first pet?",
+         "In what city were you born?",
+         "What is your favorite book/movie/TV show?",
+         "What is the name of your childhood best friend?"};
 select:
-    cout << "-----Please choose a question that you can use to recover your account if you forget your password-----\n";
+    cout << "\n-----Please choose a question that you can use to recover your account if you forget your password-----\n";
     for (int i = 0; i < size; i++)
     {
         cout << i + 1 << "- " << questions[i] << endl;
@@ -273,7 +264,7 @@ select:
         goto select;
     }
 }
-void login(User users[], int& numUser)
+void login(User users[], int &numUser)
 {
     string email, password;
     cout << "Enter email : ";
@@ -287,22 +278,25 @@ void login(User users[], int& numUser)
     {
         if (users[i].checkLogin(email, password))
         {
-            cout << "--------Login successful! Welcome---------\n";
+            cout << "\n--------Login successful! Welcome---------\n";
             log = true;
             break;
         }
     }
     if (!log)
     {
-        cout << "Invalid email or password. Please try again." << endl;
+        cout << "\nInvalid email or password. Please try again.\n"
+             << endl;
     }
 }
-void forgetpassword(User users[], int& numUser)
+void forgetpassword(User users[], int &numUser)
 {
     string email;
     cout << "Don't worrry, we will try to recover your password\n";
     cout << "Enter your email : ";
-    cin >> email;
+    cin.ignore();
+    getline(cin, email);
+    email = deletespaces(email);
 
     bool forget = false;
     for (int i = 0; i < numUser; i++)
@@ -312,10 +306,12 @@ void forgetpassword(User users[], int& numUser)
             string answer;
             cout << users[i].getsecurityQuestion() << endl;
             cout << "Enter your anser : ";
-            cin >> answer;
+            getline(cin,answer);
+            answer = deletespaces(answer);
             if (answer == users[i].getquestionAnswer())
             {
-                cout << "----------your password is ( " << users[i].getPassword() << " ) ----------" << endl;
+                cout << "\n----------your password is ( " << users[i].getPassword() << " ) ----------\n"
+                     << endl;
                 forget = true;
                 break;
             }
@@ -329,5 +325,38 @@ void forgetpassword(User users[], int& numUser)
     if (!forget)
     {
         cout << "----------Sorry, the email not found----------\n";
+    }
+}
+string deletespaces(const string& str) {
+    string result; 
+    for (char c : str) {
+        if (!isspace(c)) {
+            result += c;
+        }
+    }
+    return result;
+}
+void createAccount(User user)
+{
+    ofstream outfile(file, ios::app);
+    if (outfile.is_open())
+    {
+        user.saveToFile(outfile);
+        cout << "\n------------Account successfully created----------\n";
+        outfile.close();
+    }
+    else
+        cout << "\n-----Unable to open file for saving user data.------\n";
+}
+string getName(const string& prompt) {
+    string name;
+    while (true) {
+        cout << prompt;
+        getline(cin, name);
+        name = deletespaces(name);
+        if (!name.empty()) {
+            return name;
+        }
+        cout << "Invalid input. Name cannot be empty. Please try again.\n";
     }
 }
